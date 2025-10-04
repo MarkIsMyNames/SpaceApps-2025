@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import Header from './components/Header';
 import ImageViewer from './components/ImageViewer';
 import './App.css';
 
@@ -21,6 +22,7 @@ const App: React.FC = () => {
 
   return (
     <div className="app-container">
+      <Header />
       <ImageViewer images={images} />
     </div>
   );

@@ -1,0 +1,7 @@
+.title {
+  font-size: 1.5rem;
+  margin: 0;
+  color: var(--andromeda-cyan, rgba(125, 211, 252, 1));
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
