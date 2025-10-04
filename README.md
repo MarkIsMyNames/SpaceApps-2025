@@ -4,6 +4,6 @@ FE: React, Typescript + Tailwind CSS
 
 BE: Python
 
-Hosting: locally
+Hosting: Running locally but mimics a server client behaviour
 
 I'm just using the Vite logo as a placeholder as the images are too big for github
