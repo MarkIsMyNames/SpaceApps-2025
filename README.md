@@ -6,4 +6,4 @@ BE: Python
 
 Hosting: locally
 
-Use AI to Analyse image
+I'm just using the Vite logo as a placeholder as the images are too big for github
