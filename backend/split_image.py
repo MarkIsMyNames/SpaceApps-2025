@@ -8,8 +8,9 @@ Image.MAX_IMAGE_PIXELS = None
 
 # Configuration
 tile_size = 128  # Target tile size in pixels (128x128)
-input_dir = "."  # Current directory (backend)
-output_dir = "images"
+input_dir = "backend"
+output_dir = "backend/images"
+
 
 # Create output directory
 os.makedirs(output_dir, exist_ok=True)
