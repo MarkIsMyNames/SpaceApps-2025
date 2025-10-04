@@ -11,6 +11,7 @@ tile_size = 128  # Target tile size in pixels (128x128)
 input_dir = "backend"
 output_dir = "backend/images"
 
+
 # Create output directory
 os.makedirs(output_dir, exist_ok=True)
 
