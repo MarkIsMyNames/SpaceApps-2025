@@ -54,15 +54,11 @@ for row in range(rows):
         tile = img.crop((left, top, right, bottom))
 
         # Save the full resolution tile
-        filename = f"r{row:03d}_c{col:03d}.png"
+        filename = f"r{row:03d}_c{col:03d}.jpg"
         filepath = os.path.join(OUTPUT_DIR, filename)
-        tile.save(filepath)
+        tile.save(filepath, 'JPEG', quality=100, optimize=True)
 
-        # Create and save preview (1:2 scale, 8-bit)
-        preview_width = actual_width // 2
-        preview_height = actual_height // 2
-        preview = tile.resize((preview_width, preview_height), Image.LANCZOS)
-        preview = preview.convert('P', palette=Image.ADAPTIVE, colors=256)
-        preview_filename = f"r{row:03d}_c{col:03d}_preview.png"
+        # Create and save preview (same size, lower quality JPEG)
+        preview_filename = f"r{row:03d}_c{col:03d}_preview.jpg"
         preview_filepath = os.path.join(PREVIEW_DIR, preview_filename)
-        preview.save(preview_filepath)
+        tile.save(preview_filepath, 'JPEG', quality=50, optimize=True)
