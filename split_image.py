@@ -15,7 +15,7 @@ output_dir = "backend/images"
 os.makedirs(output_dir, exist_ok=True)
 
 # Find all images in backend folder (not subfolders)
-image_extensions = ['*.jpg', '*.jpeg', '*.png', '*.gif', '*.bmp']
+image_extensions = ['*.jpg', '*.jpeg', '*.png']
 image_files = []
 for ext in image_extensions:
     image_files.extend(glob.glob(os.path.join(input_dir, ext)))
@@ -25,10 +25,8 @@ if not image_files:
     exit(1)
 
 input_image = image_files[0]
-print(f"Loading image: {input_image}")
 img = Image.open(input_image)
 width, height = img.size
-print(f"Image size: {width}x{height}")
 
 # Calculate number of tiles needed
 cols = (width + tile_size - 1) // tile_size  # Ceiling division
@@ -39,7 +37,6 @@ print(f"Grid: {rows} rows x {cols} cols = {total_tiles} tiles")
 print(f"Creating tiles...")
 
 # Split the image
-count = 0
 for row in range(rows):
     for col in range(cols):
         left = col * tile_size
@@ -54,13 +51,16 @@ for row in range(rows):
         # Crop the tile
         tile = img.crop((left, top, right, bottom))
 
-        # Save the tile
-        filename = f"tile_r{row:03d}_c{col:03d}.png"
+        # Save the full resolution tile
+        filename = f"r{row:03d}_c{col:03d}.png"
         filepath = os.path.join(output_dir, filename)
         tile.save(filepath, optimize=True)
 
-        count += 1
-        if count % 256 == 0:
-            print(f"Processed {count}/{total_tiles} tiles...")
-
-print(f"Done! All {count} tiles saved to {output_dir}/")
+        # Create and save preview (1:2 scale, 8-bit)
+        preview_width = actual_width // 2
+        preview_height = actual_height // 2
+        preview = tile.resize((preview_width, preview_height), Image.LANCZOS)
+        preview = preview.convert('P', palette=Image.ADAPTIVE, colors=256)
+        preview_filename = f"r{row:03d}_c{col:03d}_preview.png"
+        preview_filepath = os.path.join(output_dir, preview_filename)
+        preview.save(preview_filepath, optimize=True)
