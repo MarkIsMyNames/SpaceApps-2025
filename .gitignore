@@ -1,0 +1,3 @@
+# Split image tiles
+backend/images/*.png
+backend/image_previews/*.png
