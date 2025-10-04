@@ -1,3 +1,15 @@
-# Split image tiles
-backend/images/*.jpg
-backend/image_previews/*.jpg
+# Ignore backend image directories
+backend/images/
+backend/image_previews/
+backend/mars_viking_z5.jpg
+
+# Python cache
+backend/__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# OS files
+.DS_Store
+Thumbs.db
