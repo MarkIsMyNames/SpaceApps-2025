@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import ImageViewer from './components/ImageViewer';
+import './App.css';
 
 const App: React.FC = () => {
   const [images, setImages] = useState<string[]>([]);
@@ -18,20 +20,8 @@ const App: React.FC = () => {
   }, []);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-      <h1>Image Gallery</h1>
-      {images.length > 0 ? (
-        images.map((image: string) => (
-          <img 
-            key={image} 
-            src={`http://localhost:5000/images/${image}`} 
-            alt={image} 
-            style={{ width: '300px', margin: '10px' }} 
-          />
-        ))
-      ) : (
-        <p>No images found.</p>
-      )}
+    <div className="app-container">
+      <ImageViewer images={images} />
     </div>
   );
 };
