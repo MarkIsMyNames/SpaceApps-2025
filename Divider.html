@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>64x64 Image Grid</title>
+    <style>
+      body {
+        background-color: #000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        overflow: auto;
+      }
+      .space-image {
+        display: grid;
+      }
+      .space-image img {
+        display: block;
+        object-fit: cover;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="space-image" id="spaceGrid"></div>
+
+    <script>
+      const rows = 64;
+      const cols = 64;
+
+      const bigImage = new Image();
+      bigImage.src = "heic1502a.jpg";
+      bigImage.onload = () => {
+        const grid = document.getElementById("spaceGrid");
+
+        const tileWidth = Math.floor(bigImage.width / cols);
+        const tileHeight = Math.floor(bigImage.height / rows);
+
+        grid.style.gridTemplateColumns = `repeat(${cols}, ${tileWidth}px)`;
+        grid.style.gridTemplateRows = `repeat(${rows}, ${tileHeight}px)`;
+
+        for (let row = 0; row < rows; row++) {
+          for (let col = 0; col < cols; col++) {
+            const canvas = document.createElement("canvas");
+            canvas.width = tileWidth;
+            canvas.height = tileHeight;
+            const ctx = canvas.getContext("2d");
+
+            ctx.drawImage(
+              bigImage,
+              col * tileWidth,
+              row * tileHeight,
+              tileWidth,
+              tileHeight,
+              0,
+              0,
+              tileWidth,
+              tileHeight
+            );
+
+            const img = document.createElement("img");
+            img.src = canvas.toDataURL();
+            grid.appendChild(img);
+
+            const link = document.createElement("a");
+            link.href = img.src;
+            link.download = `tile_r${row}_c${col}.png`;
+            link.click();
+          }
+        }
+      };
+    </script>
+  </body>
+</html>
