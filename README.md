@@ -74,5 +74,5 @@ cd SpaceApps-2025
 | **globals** | ^16.4.0 | [https://github.com/sindresorhus/globals](https://github.com/sindresorhus/globals) | Global variable definitions for ESLint |
 
 | Table of Reference|
-|-------------------|
+|-------------------|------|--------|-----|
 | **Mars Viking MDIM21 Color Mosaic Global 232m** | NASA Solar System Treks Project (SSTP), Jet Propulsion Laboratory (JPL), California Institute of Technology | [https://trek.nasa.gov/tiles/apidoc/trekAPI.html?body=mars](https://trek.nasa.gov/tiles/apidoc/trekAPI.html?body=mars) | Global color mosaic of Mars generated from Viking Orbiter imagery, provided via NASA Trek Web Map Tile Service (WMTS). Accessed October 2025. |
