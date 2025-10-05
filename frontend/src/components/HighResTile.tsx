@@ -11,8 +11,6 @@ type HighResTileProps = {
 };
 
 const HighResTile: React.FC<HighResTileProps> = ({
-  row,
-  col,
   url,
   viewportX,
   viewportY,
@@ -21,7 +19,6 @@ const HighResTile: React.FC<HighResTileProps> = ({
 }) => {
   return (
     <img
-      key={`high_${row}_${col}`}
       src={url}
       alt=""
       className="tile-fade-in"

@@ -11,8 +11,6 @@ type PreviewTileProps = {
 };
 
 const PreviewTile: React.FC<PreviewTileProps> = ({
-  row,
-  col,
   url,
   viewportX,
   viewportY,
@@ -21,7 +19,6 @@ const PreviewTile: React.FC<PreviewTileProps> = ({
 }) => {
   return (
     <img
-      key={`low_${row}_${col}`}
       src={url}
       alt=""
       className="tile-fade-in"

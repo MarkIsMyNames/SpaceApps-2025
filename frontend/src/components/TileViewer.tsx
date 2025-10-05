@@ -30,8 +30,8 @@ type Tile = {
 
 // Zone constants (in pixels from viewport edges)
 const HIGHRES_MARGIN = 0;     // High-res: exactly what's visible in viewport
-const LOWRES_MARGIN = 512;    // Low-res: 512px border around viewport for smooth panning
-const CLEANUP_MARGIN = 2048;  // Cleanup: 2048px border - unload tiles beyond this
+const LOWRES_MARGIN = 768;    // Low-res: 768px border around viewport for smooth panning
+const CLEANUP_MARGIN = 3096;  // Cleanup: 3096px border - unload tiles beyond this
 
 const TileViewer: React.FC = () => {
   const [tileMeta, setTileMeta] = useState<TileMeta | null>(null);
@@ -41,6 +41,7 @@ const TileViewer: React.FC = () => {
   const [dragStartX, setDragStartX] = useState(0);
   const [dragStartY, setDragStartY] = useState(0);
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
+  const [, forceUpdate] = useState(0);
 
   // Dynamic tile map: key is "r_c", value is Tile
   const tilesMapRef = useRef<Map<string, Tile>>(new Map());
@@ -185,6 +186,9 @@ const TileViewer: React.FC = () => {
             tilesMap.set(key, tile);
           }
         });
+
+        // Force re-render to show newly loaded tiles
+        forceUpdate(prev => prev + 1);
       }
       return results;
     };
