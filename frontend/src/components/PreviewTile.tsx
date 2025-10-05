@@ -23,7 +23,7 @@ const PreviewTile: React.FC<PreviewTileProps> = ({
     <img
       key={`low_${row}_${col}`}
       src={url}
-      alt={`Preview ${row},${col}`}
+      alt=""
       className="tile-fade-in"
       style={{
         position: 'absolute',
