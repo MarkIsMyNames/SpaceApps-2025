@@ -31,10 +31,10 @@ interface Tile {
   distance: number;
 }
 
-// Zone constants (in pixels from viewport center)
-const HIGHRES_RADIUS = 1024; // High-res area (2x viewport radius for faster loading)
-const LOWRES_RADIUS = 2048;  // Border area for preview tiles (expanded for smoother panning)
-const CLEANUP_RADIUS = 3072; // Beyond this, unload tiles
+// Zone constants (in pixels from viewport edges)
+const HIGHRES_MARGIN = 0;     // High-res: exactly what's visible in viewport
+const LOWRES_MARGIN = 512;    // Low-res: 512px border around viewport for smooth panning
+const CLEANUP_MARGIN = 2048;  // Cleanup: 2048px border - unload tiles beyond this
 
 const TileViewer: React.FC = () => {
   const [tileMeta, setTileMeta] = useState<TileMeta | null>(null);
@@ -42,16 +42,21 @@ const TileViewer: React.FC = () => {
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [dragStart, setDragStart] = useState<PanState>({ x: 0, y: 0 });
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
-  
+
   // Dynamic tile map: key is "r_c", value is Tile
   const tilesMapRef = useRef<Map<string, Tile>>(new Map());
   const [renderTrigger, setRenderTrigger] = useState<number>(0); // Force re-render
-  
-  const containerRef = useRef<HTMLDivElement>(null);
-  const viewportSize = 1024;
-  const viewportCenter = viewportSize / 2;
 
-  // Calculate distance from tile center to viewport center (in world coordinates)
+  // Track in-flight requests to prevent duplicates
+  const loadingTilesRef = useRef<Set<string>>(new Set());
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const viewportWidth = 1024;
+  const viewportHeight = 512;
+  const viewportCenterX = viewportWidth / 2;
+  const viewportCenterY = viewportHeight / 2;
+
+  // Calculate distance from tile center to viewport center (for center-out ordering)
   const calculateTileDistance = useCallback((row: number, col: number, centerX: number, centerY: number, tileWidth: number, tileHeight: number) => {
     const tileCenterX = col * tileWidth + tileWidth / 2;
     const tileCenterY = row * tileHeight + tileHeight / 2;
@@ -60,20 +65,54 @@ const TileViewer: React.FC = () => {
     return Math.sqrt(dx * dx + dy * dy);
   }, []);
 
-  // Load a single tile (high-res or low-res)
+  // Check if tile is within a rectangular zone (viewport + margin)
+  const isTileInZone = useCallback((row: number, col: number, panX: number, panY: number, tileWidth: number, tileHeight: number, margin: number) => {
+    const tileLeft = col * tileWidth;
+    const tileRight = (col + 1) * tileWidth;
+    const tileTop = row * tileHeight;
+    const tileBottom = (row + 1) * tileHeight;
+
+    const zoneLeft = panX - margin;
+    const zoneRight = panX + viewportWidth + margin;
+    const zoneTop = panY - margin;
+    const zoneBottom = panY + viewportHeight + margin;
+
+    // Check if tile overlaps with zone
+    return tileRight > zoneLeft && tileLeft < zoneRight &&
+           tileBottom > zoneTop && tileTop < zoneBottom;
+  }, [viewportWidth, viewportHeight]);
+
+  // Load a single tile (high-res or low-res) - optimized to use direct URLs
   const loadTile = useCallback(async (row: number, col: number, type: 'high' | 'low', distance: number) => {
+    const key = `${type}_${row}_${col}`;
+
+    // Skip if already loading OR already loaded in the map
+    if (loadingTilesRef.current.has(key) || tilesMapRef.current.has(key)) {
+      return null;
+    }
+
+    loadingTilesRef.current.add(key);
+
     try {
+      // Use direct URL instead of blob - much faster!
       const endpoint = type === 'high' ? `/api/tiles/${row}/${col}` : `/api/tiles/preview/${row}/${col}`;
-      const response = await axios.get(endpoint, {
-        responseType: 'blob',
-        headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        }
+
+      // Preload the image to ensure it's in cache
+      return new Promise<Tile | null>((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          loadingTilesRef.current.delete(key);
+          resolve({ row, col, url: endpoint, type, distance });
+        };
+        img.onerror = () => {
+          loadingTilesRef.current.delete(key);
+          console.warn(`Failed to load ${type} tile ${row},${col}`);
+          resolve(null);
+        };
+        img.src = endpoint;
       });
-      const imageUrl = URL.createObjectURL(response.data);
-      return { row, col, url: imageUrl, type, distance };
     } catch (error) {
+      loadingTilesRef.current.delete(key);
       console.warn(`Failed to load ${type} tile ${row},${col}:`, error);
       return null;
     }
@@ -82,31 +121,32 @@ const TileViewer: React.FC = () => {
   // Core function to update tiles based on current viewport
   const updateTiles = useCallback(async (meta: TileMeta, currentPanX: number, currentPanY: number) => {
     // Calculate world center of viewport
-    const worldCenterX = currentPanX + viewportCenter;
-    const worldCenterY = currentPanY + viewportCenter;
+    const worldCenterX = currentPanX + viewportCenterX;
+    const worldCenterY = currentPanY + viewportCenterY;
 
-    // Calculate which tiles we need
+    // Calculate which tiles we need using rectangular zones
     const highResTiles: Array<{row: number, col: number, distance: number}> = [];
     const lowResTiles: Array<{row: number, col: number, distance: number}> = [];
 
-    // Scan a generous area around viewport to find tiles in each zone
-    const scanRadius = Math.ceil(CLEANUP_RADIUS / Math.min(meta.tileWidth, meta.tileHeight)) + 2;
+    // Calculate scan area based on cleanup margin
+    const scanTilesX = Math.ceil((viewportWidth + CLEANUP_MARGIN * 2) / meta.tileWidth) + 2;
+    const scanTilesY = Math.ceil((viewportHeight + CLEANUP_MARGIN * 2) / meta.tileHeight) + 2;
     const centerRow = Math.floor(worldCenterY / meta.tileHeight);
     const centerCol = Math.floor(worldCenterX / meta.tileWidth);
 
-    for (let row = centerRow - scanRadius; row <= centerRow + scanRadius; row++) {
-      for (let col = centerCol - scanRadius; col <= centerCol + scanRadius; col++) {
-        // Check if tile exists
+    for (let row = centerRow - scanTilesY; row <= centerRow + scanTilesY; row++) {
+      for (let col = centerCol - scanTilesX; col <= centerCol + scanTilesX; col++) {
+        // Check if tile exists in the tileset
         if (row < meta.minRow || row > meta.maxRow || col < meta.minCol || col > meta.maxCol) {
           continue;
         }
 
         const distance = calculateTileDistance(row, col, worldCenterX, worldCenterY, meta.tileWidth, meta.tileHeight);
 
-        // Categorize by zone
-        if (distance <= HIGHRES_RADIUS) {
+        // Categorize by rectangular zone
+        if (isTileInZone(row, col, currentPanX, currentPanY, meta.tileWidth, meta.tileHeight, HIGHRES_MARGIN)) {
           highResTiles.push({ row, col, distance });
-        } else if (distance <= LOWRES_RADIUS && meta.hasPreview) {
+        } else if (isTileInZone(row, col, currentPanX, currentPanY, meta.tileWidth, meta.tileHeight, LOWRES_MARGIN) && meta.hasPreview) {
           lowResTiles.push({ row, col, distance });
         }
       }
@@ -118,55 +158,60 @@ const TileViewer: React.FC = () => {
 
     const tilesMap = tilesMapRef.current;
 
-    // Load high-res tiles (prioritized, batch load)
-    const highResPromises = highResTiles
-      .filter(t => !tilesMap.has(`${t.row}_${t.col}`) || tilesMap.get(`${t.row}_${t.col}`)!.type === 'low')
-      .map(t => loadTile(t.row, t.col, 'high', t.distance));
-
-    // Load low-res tiles (background, only if not already loaded)
-    const lowResPromises = lowResTiles
-      .filter(t => !tilesMap.has(`${t.row}_${t.col}`))
-      .map(t => loadTile(t.row, t.col, 'low', t.distance));
-
-    // Load high-res immediately
-    const highResResults = await Promise.all(highResPromises);
-    highResResults.forEach(tile => {
-      if (tile) {
-        const key = `${tile.row}_${tile.col}`;
-        const existing = tilesMap.get(key);
-        if (existing) {
-          URL.revokeObjectURL(existing.url); // Clean up old URL
-        }
-        tilesMap.set(key, tile);
-      }
+    // Filter tiles to load (avoid duplicates and unnecessary requests)
+    const highResToLoad = highResTiles.filter(t => {
+      const key = `high_${t.row}_${t.col}`;
+      return !tilesMap.has(key);
     });
 
-    // Load low-res in background
-    Promise.all(lowResPromises).then(lowResResults => {
-      lowResResults.forEach(tile => {
-        if (tile) {
-          const key = `${tile.row}_${tile.col}`;
-          if (!tilesMap.has(key)) {
+    const lowResToLoad = lowResTiles.filter(t => {
+      const key = `low_${t.row}_${t.col}`;
+      return !tilesMap.has(key);
+    });
+
+    // Load high-res tiles in smaller batches to avoid browser connection limits
+    const BATCH_SIZE = 12; // Increased batch size for better performance with direct URLs
+    const loadInBatches = async (tiles: typeof highResToLoad, type: 'high' | 'low') => {
+      const results: (Tile | null)[] = [];
+      for (let i = 0; i < tiles.length; i += BATCH_SIZE) {
+        const batch = tiles.slice(i, i + BATCH_SIZE);
+        const batchResults = await Promise.all(
+          batch.map(t => loadTile(t.row, t.col, type, t.distance))
+        );
+        results.push(...batchResults);
+
+        // Update UI incrementally after each batch for better perceived performance
+        batchResults.forEach(tile => {
+          if (tile) {
+            const key = `${tile.type}_${tile.row}_${tile.col}`;
             tilesMap.set(key, tile);
           }
-        }
-      });
-      setRenderTrigger(prev => prev + 1);
-    });
+        });
+        setRenderTrigger(prev => prev + 1);
+      }
+      return results;
+    };
 
-    // Cleanup tiles beyond cleanup radius
+    // Load high-res tiles (tiles are added incrementally in loadInBatches)
+    await loadInBatches(highResToLoad, 'high');
+
+    // Load low-res in background (tiles are added incrementally in loadInBatches)
+    if (lowResToLoad.length > 0 && meta.hasPreview) {
+      loadInBatches(lowResToLoad, 'low');
+    }
+
+    // Cleanup tiles beyond cleanup margin (no need to revoke URLs since we're using direct URLs)
     const tilesToRemove: string[] = [];
     tilesMap.forEach((tile, key) => {
-      const distance = calculateTileDistance(tile.row, tile.col, worldCenterX, worldCenterY, meta.tileWidth, meta.tileHeight);
-      if (distance > CLEANUP_RADIUS) {
+      const inCleanupZone = isTileInZone(tile.row, tile.col, currentPanX, currentPanY, meta.tileWidth, meta.tileHeight, CLEANUP_MARGIN);
+      if (!inCleanupZone) {
         tilesToRemove.push(key);
-        URL.revokeObjectURL(tile.url);
       }
     });
     tilesToRemove.forEach(key => tilesMap.delete(key));
 
     setRenderTrigger(prev => prev + 1);
-  }, [calculateTileDistance, loadTile, viewportCenter]);
+  }, [calculateTileDistance, isTileInZone, loadTile, viewportCenterX, viewportCenterY, viewportWidth, viewportHeight]);
 
   // Fetch tile metadata on mount
   useEffect(() => {
@@ -179,8 +224,8 @@ const TileViewer: React.FC = () => {
         // Calculate initial pan to center on centerRow/centerCol
         const worldCenterX = meta.centerCol * meta.tileWidth + meta.tileWidth / 2;
         const worldCenterY = meta.centerRow * meta.tileHeight + meta.tileHeight / 2;
-        const initialPanX = worldCenterX - viewportCenter;
-        const initialPanY = worldCenterY - viewportCenter;
+        const initialPanX = worldCenterX - viewportCenterX;
+        const initialPanY = worldCenterY - viewportCenterY;
         
         setPanState({ x: initialPanX, y: initialPanY });
         
@@ -193,7 +238,7 @@ const TileViewer: React.FC = () => {
     };
 
     fetchTileMeta();
-  }, [updateTiles, viewportCenter]);
+  }, [updateTiles, viewportCenterX, viewportCenterY]);
 
   // Update tiles when pan changes (with debouncing)
   useEffect(() => {
@@ -201,7 +246,7 @@ const TileViewer: React.FC = () => {
 
     const debounceTimer = setTimeout(() => {
       updateTiles(tileMeta, panState.x, panState.y);
-    }, 50); // 50ms debounce - faster response for high-res loading
+    }, 100); // 100ms debounce - balance between responsiveness and performance
 
     return () => clearTimeout(debounceTimer);
   }, [panState, tileMeta, isInitialized, updateTiles]);
@@ -276,19 +321,22 @@ const TileViewer: React.FC = () => {
 
   // Get tiles from the map (renderTrigger forces re-render when tiles update)
   const tilesArray = Array.from(tilesMapRef.current.values());
-  const lowResTiles = tilesArray.filter(t => t.type === 'low');
   const highResTiles = tilesArray.filter(t => t.type === 'high');
+
+  // ALWAYS show all low-res tiles - they render underneath high-res with lower z-index
+  // This prevents black flicker during the high-res fade-in
+  const lowResTiles = tilesArray.filter(t => t.type === 'low');
 
   console.log(`Rendering ${tilesArray.length} tiles (${highResTiles.length} high-res, ${lowResTiles.length} low-res), pan=(${panState.x.toFixed(0)},${panState.y.toFixed(0)}), trigger=${renderTrigger}`);
 
   return (
     <div className="tile-viewer-container">
       <div className="tile-viewer-info">
-        Pan: ({panState.x.toFixed(0)}, {panState.y.toFixed(0)}) | 
-        Center: ({tileMeta.centerRow}, {tileMeta.centerCol}) | 
+        Pan: ({panState.x.toFixed(0)}, {panState.y.toFixed(0)}) |
+        Center: ({tileMeta.centerRow}, {tileMeta.centerCol}) |
         Tiles: {highResTiles.length} high-res + {lowResTiles.length} low-res
       </div>
-      
+
       <div
         ref={containerRef}
         className="tile-viewport"
@@ -299,10 +347,10 @@ const TileViewer: React.FC = () => {
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        style={{ 
+        style={{
           cursor: isDragging ? 'grabbing' : 'grab',
-          width: viewportSize,
-          height: viewportSize,
+          width: viewportWidth,
+          height: viewportHeight,
           overflow: 'hidden',
           position: 'relative',
           backgroundColor: '#000'
@@ -314,22 +362,22 @@ const TileViewer: React.FC = () => {
           const worldY = tile.row * tileMeta.tileHeight;
           const viewportX = worldX - panState.x;
           const viewportY = worldY - panState.y;
-          
+
           return (
             <img
               key={`low_${tile.row}_${tile.col}`}
               src={tile.url}
               alt={`Preview ${tile.row},${tile.col}`}
+              className="tile-fade-in"
               style={{
                 position: 'absolute',
-                left: viewportX - 1,
-                top: viewportY - 1,
-                width: tileMeta.tileWidth + 2,
-                height: tileMeta.tileHeight + 2,
-                objectFit: 'fill',
+                left: viewportX - 2,
+                top: viewportY - 2,
+                width: tileMeta.tileWidth + 4,
+                height: tileMeta.tileHeight + 4,
+                objectFit: 'cover',
                 imageRendering: 'auto',
-                filter: 'blur(3px)',
-                opacity: 0.95,
+                filter: 'blur(2px)',
                 zIndex: 1,
                 pointerEvents: 'none',
                 display: 'block',
@@ -345,12 +393,15 @@ const TileViewer: React.FC = () => {
           const worldY = tile.row * tileMeta.tileHeight;
           const viewportX = worldX - panState.x;
           const viewportY = worldY - panState.y;
-          
+
           return (
             <img
               key={`high_${tile.row}_${tile.col}`}
               src={tile.url}
               alt={`Tile ${tile.row},${tile.col}`}
+              className="tile-fade-in"
+              loading="eager"
+              decoding="async"
               style={{
                 position: 'absolute',
                 left: viewportX - 0.5,
@@ -361,7 +412,8 @@ const TileViewer: React.FC = () => {
                 imageRendering: 'auto',
                 zIndex: 2,
                 pointerEvents: 'none',
-                display: 'block'
+                display: 'block',
+                backgroundColor: 'transparent'
               }}
             />
           );
