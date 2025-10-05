@@ -13,3 +13,12 @@ backend/__pycache__/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Docker
+.docker/
+docker-compose.override.yml
+
+# Environment files
+.env
+.env.local
+.env.*.local

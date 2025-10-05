@@ -32,9 +32,9 @@ interface Tile {
 }
 
 // Zone constants (in pixels from viewport center)
-const HIGHRES_RADIUS = 512;  // Visible area (1024x1024 viewport / 2)
-const LOWRES_RADIUS = 1024;  // Border area for preview tiles
-const CLEANUP_RADIUS = 1536; // Beyond this, unload tiles
+const HIGHRES_RADIUS = 1024; // High-res area (2x viewport radius for faster loading)
+const LOWRES_RADIUS = 2048;  // Border area for preview tiles (expanded for smoother panning)
+const CLEANUP_RADIUS = 3072; // Beyond this, unload tiles
 
 const TileViewer: React.FC = () => {
   const [tileMeta, setTileMeta] = useState<TileMeta | null>(null);
@@ -201,7 +201,7 @@ const TileViewer: React.FC = () => {
 
     const debounceTimer = setTimeout(() => {
       updateTiles(tileMeta, panState.x, panState.y);
-    }, 150); // 150ms debounce
+    }, 50); // 50ms debounce - faster response for high-res loading
 
     return () => clearTimeout(debounceTimer);
   }, [panState, tileMeta, isInitialized, updateTiles]);
@@ -322,15 +322,18 @@ const TileViewer: React.FC = () => {
               alt={`Preview ${tile.row},${tile.col}`}
               style={{
                 position: 'absolute',
-                left: viewportX,
-                top: viewportY,
-                width: tileMeta.tileWidth,
-                height: tileMeta.tileHeight,
-                objectFit: 'cover',
-                filter: 'blur(2px)',
-                opacity: 0.9,
+                left: viewportX - 1,
+                top: viewportY - 1,
+                width: tileMeta.tileWidth + 2,
+                height: tileMeta.tileHeight + 2,
+                objectFit: 'fill',
+                imageRendering: 'auto',
+                filter: 'blur(3px)',
+                opacity: 0.95,
                 zIndex: 1,
-                pointerEvents: 'none'
+                pointerEvents: 'none',
+                display: 'block',
+                transform: 'translateZ(0)'
               }}
             />
           );
@@ -350,13 +353,15 @@ const TileViewer: React.FC = () => {
               alt={`Tile ${tile.row},${tile.col}`}
               style={{
                 position: 'absolute',
-                left: viewportX,
-                top: viewportY,
-                width: tileMeta.tileWidth,
-                height: tileMeta.tileHeight,
+                left: viewportX - 0.5,
+                top: viewportY - 0.5,
+                width: tileMeta.tileWidth + 1,
+                height: tileMeta.tileHeight + 1,
                 objectFit: 'cover',
+                imageRendering: 'auto',
                 zIndex: 2,
-                pointerEvents: 'none'
+                pointerEvents: 'none',
+                display: 'block'
               }}
             />
           );
