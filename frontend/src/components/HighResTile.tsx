@@ -23,7 +23,7 @@ const HighResTile: React.FC<HighResTileProps> = ({
     <img
       key={`high_${row}_${col}`}
       src={url}
-      alt={`Tile ${row},${col}`}
+      alt=""
       className="tile-fade-in"
       loading="eager"
       decoding="async"
