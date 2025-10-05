@@ -2,6 +2,8 @@
 
 A high-performance image file viewer for displaying large Mars images with dynamic loading and caching.
 
+> **Note:** Portions of this codebase and debugging were developed with assistance from AI tools.
+
 ## Getting Started
 
 Follow these steps to get your application running locally.

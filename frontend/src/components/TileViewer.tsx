@@ -306,18 +306,41 @@ const TileViewer: React.FC = () => {
   useEffect(() => {
     const handleGlobalMouseUp = () => setIsDragging(false);
     window.addEventListener('mouseup', handleGlobalMouseUp);
-    
+
     const handleWheel = (e: WheelEvent) => {
       if (containerRef.current?.contains(e.target as Node)) {
         e.preventDefault();
       }
     };
     window.addEventListener('wheel', handleWheel, { passive: false });
-    
+
     return () => {
       window.removeEventListener('mouseup', handleGlobalMouseUp);
       window.removeEventListener('wheel', handleWheel);
     };
+  }, []);
+
+  // Keyboard navigation with WASD
+  useEffect(() => {
+    const PAN_SPEED = 50; // pixels to move per keypress
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const key = e.key;
+
+      // Check for WASD
+      if (key === 'w' || key === 'W') {
+        setPanY(prev => prev - PAN_SPEED);
+      } else if (key === 's' || key === 'S') {
+        setPanY(prev => prev + PAN_SPEED);
+      } else if (key === 'a' || key === 'A') {
+        setPanX(prev => prev - PAN_SPEED);
+      } else if (key === 'd' || key === 'D') {
+        setPanX(prev => prev + PAN_SPEED);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   if (!tileMeta || !isInitialized) {
