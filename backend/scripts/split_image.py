@@ -8,7 +8,7 @@ Image.MAX_IMAGE_PIXELS = None
 
 # Configuration
 TILE_SIZE = 128
-INPUT_DIR = ".."
+INPUT_DIR = ""
 OUTPUT_DIR = "../images"
 PREVIEW_DIR = "../image_previews"
 
