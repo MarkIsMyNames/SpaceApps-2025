@@ -9,9 +9,9 @@
 
 .tile-viewer-info {
   color: #fff;
-  margin-bottom: 10px;
   font-family: monospace;
   font-size: 14px;
+  padding-top: 70px;
 }
 
 .tile-viewport {
@@ -48,4 +48,27 @@
   color: #fff;
   font-size: 18px;
   margin: 50px;
+}
+
+/* Smooth fade-in animation for tiles */
+@keyframes tileAppear {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.tile-fade-in {
+  animation: tileAppear 0.3s ease-in forwards;
+  /* Start invisible, fade in to visible */
+  opacity: 0;
+  animation-fill-mode: forwards;
+}
+
+/* Ensure images maintain their state after load */
+.tile-fade-in.loaded {
+  opacity: 1;
+  animation: none;
 }
