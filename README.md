@@ -55,7 +55,7 @@ cd SpaceApps-2025
 |------------|---------|------|---------|
 | **Flask** | 3.1.2 | [https://flask.palletsprojects.com/](https://flask.palletsprojects.com/) | Web framework for serving API endpoints and files |
 | **flask-cors** | 6.0.1 | [https://flask-cors.readthedocs.io/](https://flask-cors.readthedocs.io/) | Handle Cross-Origin Resource Sharing (CORS) for frontend-backend communication |
-| **Pillow** | 11.0.0 | [https://pillow.readthedocs.io/](https://pillow.readthedocs.io/) | Read image dimensions from file files and validate image formats |
+| **Pillow** | 11.0.0 | [https://pillow.readthedocs.io/](https://pillow.readthedocs.io/) | Read image dimensions from files and validate image formats |
 | **watchdog** | 6.0.0 | [https://github.com/gorakhargosh/watchdog](https://github.com/gorakhargosh/watchdog) | Monitor file directories for new/modified files and automatically update database |
 | **react** | ^19.1.1 | [https://react.dev/](https://react.dev/) | UI component framework for building the file viewer interface |
 | **react-dom** | ^19.1.1 | [https://react.dev/](https://react.dev/) | React renderer for DOM manipulation |
