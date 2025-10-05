@@ -73,5 +73,6 @@ cd SpaceApps-2025
 | **eslint-plugin-react-refresh** | ^0.4.22 | [https://github.com/ArnaudBarre/eslint-plugin-react-refresh](https://github.com/ArnaudBarre/eslint-plugin-react-refresh) | ESLint plugin for React Fast Refresh compatibility |
 | **globals** | ^16.4.0 | [https://github.com/sindresorhus/globals](https://github.com/sindresorhus/globals) | Global variable definitions for ESLint |
 
-| Table of Reference|-------------------|------|--------|-----|
+| Reference | Provider | Link | Description |
+|----------|-----------|------|--------------|
 | **Mars Viking MDIM21 Color Mosaic Global 232m** | NASA Solar System Treks Project (SSTP), Jet Propulsion Laboratory (JPL), California Institute of Technology | [https://trek.nasa.gov/tiles/apidoc/trekAPI.html?body=mars](https://trek.nasa.gov/tiles/apidoc/trekAPI.html?body=mars) | Global color mosaic of Mars generated from Viking Orbiter imagery, provided via NASA Trek Web Map Tile Service (WMTS). Accessed October 2025. |
