@@ -1,0 +1,23 @@
+# Azure-specific Docker Compose override
+version: '3.8'
+
+services:
+  backend:
+    image: ${AZURE_REGISTRY_URL}/spaceapps-backend:${IMAGE_TAG:-latest}
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      cache_from:
+        - ${AZURE_REGISTRY_URL}/spaceapps-backend:latest
+    environment:
+      - FLASK_ENV=production
+      - PYTHONUNBUFFERED=1
+
+  frontend:
+    image: ${AZURE_REGISTRY_URL}/spaceapps-frontend:${IMAGE_TAG:-latest}
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      cache_from:
+        - ${AZURE_REGISTRY_URL}/spaceapps-frontend:latest
+

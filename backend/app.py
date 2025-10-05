@@ -11,6 +11,7 @@ CORS(app, origins=['http://localhost:5173', 'http://localhost:3000'])
 
 # Path to the images directory
 IMAGE_DIR = 'images'
+PREVIEW_DIR = 'image_previews'
 VIEW_DATA_FILE = 'view_data.json'
 
 @app.route('/api/images', methods=['GET'])
@@ -25,8 +26,10 @@ def serve_image(filename):
 @app.route('/api/tiles/meta', methods=['GET'])
 def get_tiles_meta():
     try:
-        # Scan for tile files matching pattern tile_r(\d+)_c(\d+)\.(png|jpg|jpeg|webp)
-        tile_pattern = re.compile(r'tile_r(\d+)_c(\d+)\.(png|jpg|jpeg|webp)$', re.IGNORECASE)
+        # Scan for tile files matching pattern r(\d+)_c(\d+)\.(png|jpg|jpeg|webp)
+        tile_pattern = re.compile(r'^r(\d+)_c(\d+)\.(png|jpg|jpeg|webp)$', re.IGNORECASE)
+        # Also scan for preview tiles: r(\d+)_c(\d+)_preview\.(png|jpg|jpeg|webp)
+        preview_pattern = re.compile(r'^r(\d+)_c(\d+)_preview\.(png|jpg|jpeg|webp)$', re.IGNORECASE)
         
         rows = set()
         cols = set()
@@ -34,25 +37,56 @@ def get_tiles_meta():
         tile_width = None
         tile_height = None
         
-        for filename in os.listdir(IMAGE_DIR):
-            match = tile_pattern.match(filename)
-            if match:
-                row = int(match.group(1))
-                col = int(match.group(2))
-                ext = match.group(3).lower()
-                
-                rows.add(row)
-                cols.add(col)
-                extensions.add(ext)
-                
-                # Get tile dimensions from first tile found
-                if tile_width is None:
-                    try:
-                        with Image.open(os.path.join(IMAGE_DIR, filename)) as img:
-                            tile_width, tile_height = img.size
-                    except Exception:
-                        # If we can't read the image, use default dimensions
-                        tile_width, tile_height = 256, 256
+        preview_rows = set()
+        preview_cols = set()
+        preview_extensions = set()
+        preview_width = None
+        preview_height = None
+        
+        # Scan high-res tiles
+        if os.path.exists(IMAGE_DIR):
+            for filename in os.listdir(IMAGE_DIR):
+                match = tile_pattern.match(filename)
+                if match:
+                    row = int(match.group(1))
+                    col = int(match.group(2))
+                    ext = match.group(3).lower()
+                    
+                    rows.add(row)
+                    cols.add(col)
+                    extensions.add(ext)
+                    
+                    # Get tile dimensions from first tile found
+                    if tile_width is None:
+                        try:
+                            with Image.open(os.path.join(IMAGE_DIR, filename)) as img:
+                                tile_width, tile_height = img.size
+                        except Exception:
+                            # If we can't read the image, use default dimensions
+                            tile_width, tile_height = 256, 256
+        
+        # Scan preview tiles
+        if os.path.exists(PREVIEW_DIR):
+            for filename in os.listdir(PREVIEW_DIR):
+                match = preview_pattern.match(filename)
+                if match:
+                    row = int(match.group(1))
+                    col = int(match.group(2))
+                    ext = match.group(3).lower()
+                    
+                    preview_rows.add(row)
+                    preview_cols.add(col)
+                    preview_extensions.add(ext)
+                    
+                    # Get preview dimensions from first preview found
+                    if preview_width is None:
+                        try:
+                            with Image.open(os.path.join(PREVIEW_DIR, filename)) as img:
+                                preview_width, preview_height = img.size
+                        except Exception:
+                            # Default to half of high-res tile size
+                            preview_width = (tile_width or 256) // 2
+                            preview_height = (tile_height or 256) // 2
         
         if not rows or not cols:
             return jsonify({'error': 'No tile files found'}), 404
@@ -64,7 +98,7 @@ def get_tiles_meta():
         center_row = (min_row + max_row) // 2
         center_col = (min_col + max_col) // 2
         
-        return jsonify({
+        response = {
             'minRow': min_row,
             'maxRow': max_row,
             'minCol': min_col,
@@ -73,8 +107,14 @@ def get_tiles_meta():
             'tileHeight': tile_height or 256,
             'extensions': list(extensions),
             'centerRow': center_row,
-            'centerCol': center_col
-        })
+            'centerCol': center_col,
+            'hasPreview': len(preview_rows) > 0,
+            'previewWidth': preview_width,
+            'previewHeight': preview_height,
+            'previewExtensions': list(preview_extensions) if preview_extensions else []
+        }
+        
+        return jsonify(response)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -82,16 +122,33 @@ def get_tiles_meta():
 def get_tile(r, c):
     try:
         # Try different extensions in order of preference
-        extensions = ['png', 'jpg', 'jpeg', 'webp']
+        extensions = ['jpg', 'png', 'jpeg', 'webp']
         
         for ext in extensions:
-            filename = f'tile_r{r:03d}_c{c:03d}.{ext}'
+            filename = f'r{r:03d}_c{c:03d}.{ext}'
             filepath = os.path.join(IMAGE_DIR, filename)
             
             if os.path.exists(filepath):
                 return send_file(filepath, mimetype=f'image/{ext}')
         
         return jsonify({'error': 'Tile not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/tiles/preview/<int:r>/<int:c>', methods=['GET'])
+def get_preview_tile(r, c):
+    try:
+        # Try different extensions in order of preference
+        extensions = ['png', 'jpg', 'jpeg', 'webp']
+        
+        for ext in extensions:
+            filename = f'r{r:03d}_c{c:03d}_preview.{ext}'
+            filepath = os.path.join(PREVIEW_DIR, filename)
+            
+            if os.path.exists(filepath):
+                return send_file(filepath, mimetype=f'image/{ext}')
+        
+        return jsonify({'error': 'Preview tile not found'}), 404
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -121,4 +178,6 @@ def collect_view_data():
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    import os
+    debug = os.getenv('FLASK_ENV', 'development') == 'development'
+    app.run(host='0.0.0.0', port=5000, debug=debug)
