@@ -6,10 +6,8 @@ import './Header.css';
 const Header: React.FC = () => {
   return (
     <header className="header">
-      <div className="header-title">
-        <Logo />
-        <Title text="Andromeda Galaxy Explorer" />
-      </div>
+      <Logo />
+      <Title text="Andromeda Galaxy Explorer" />
     </header>
   );
 };

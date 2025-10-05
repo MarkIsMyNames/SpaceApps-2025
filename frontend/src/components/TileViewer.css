@@ -2,16 +2,9 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 20px;
+  padding: 90px 20px 20px;
   background-color: #1a1a1a;
   min-height: 100vh;
-}
-
-.tile-viewer-info {
-  color: #fff;
-  font-family: monospace;
-  font-size: 14px;
-  padding-top: 70px;
 }
 
 .tile-viewport {
@@ -23,34 +16,12 @@
   touch-action: none;
 }
 
-.tile-container {
-  position: relative;
-  display: block;
-}
-
-.tile-image {
-  display: block;
-  image-rendering: pixelated;
-  image-rendering: -moz-crisp-edges;
-  image-rendering: crisp-edges;
-}
-
-.tile-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #666;
-  font-size: 12px;
-  border: 1px solid #444;
-}
-
 .loading {
   color: #fff;
   font-size: 18px;
   margin: 50px;
 }
 
-/* Smooth fade-in animation for tiles */
 @keyframes tileAppear {
   0% {
     opacity: 0;
@@ -62,13 +33,6 @@
 
 .tile-fade-in {
   animation: tileAppear 0.3s ease-in forwards;
-  /* Start invisible, fade in to visible */
   opacity: 0;
   animation-fill-mode: forwards;
-}
-
-/* Ensure images maintain their state after load */
-.tile-fade-in.loaded {
-  opacity: 1;
-  animation: none;
 }
