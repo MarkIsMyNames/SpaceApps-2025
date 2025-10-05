@@ -44,7 +44,6 @@ const TileViewer: React.FC = () => {
 
   // Dynamic tile map: key is "r_c", value is Tile
   const tilesMapRef = useRef<Map<string, Tile>>(new Map());
-  const [renderTrigger, setRenderTrigger] = useState<number>(0); // Force re-render
 
   // Track in-flight requests to prevent duplicates
   const loadingTilesRef = useRef<Set<string>>(new Set());
@@ -186,7 +185,6 @@ const TileViewer: React.FC = () => {
             tilesMap.set(key, tile);
           }
         });
-        setRenderTrigger(prev => prev + 1);
       }
       return results;
     };
@@ -209,7 +207,6 @@ const TileViewer: React.FC = () => {
     });
     tilesToRemove.forEach(key => tilesMap.delete(key));
 
-    setRenderTrigger(prev => prev + 1);
   }, [calculateTileDistance, isTileInZone, loadTile, viewportCenterX, viewportCenterY, viewportWidth, viewportHeight]);
 
   // Fetch tile metadata on mount
@@ -334,8 +331,6 @@ const TileViewer: React.FC = () => {
   // ALWAYS show all low-res tiles - they render underneath high-res with lower z-index
   // This prevents black flicker during the high-res fade-in
   const lowResTiles = tilesArray.filter(t => t.type === 'low');
-
-  console.log(`Rendering ${tilesArray.length} tiles (${highResTiles.length} high-res, ${lowResTiles.length} low-res), pan=(${panX.toFixed(0)},${panY.toFixed(0)}), trigger=${renderTrigger}`);
 
   return (
     <div className="tile-viewer-container">
