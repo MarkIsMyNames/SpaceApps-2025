@@ -1,8 +1,10 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import axios from 'axios';
+import PreviewTile from './PreviewTile';
+import HighResTile from './HighResTile';
 import './TileViewer.css';
 
-interface TileMeta {
+type TileMeta = {
   minRow: number;
   maxRow: number;
   minCol: number;
@@ -16,20 +18,15 @@ interface TileMeta {
   previewWidth: number;
   previewHeight: number;
   previewExtensions: string[];
-}
+};
 
-interface PanState {
-  x: number;
-  y: number;
-}
-
-interface Tile {
+type Tile = {
   row: number;
   col: number;
   url: string;
   type: 'high' | 'low';
   distance: number;
-}
+};
 
 // Zone constants (in pixels from viewport edges)
 const HIGHRES_MARGIN = 0;     // High-res: exactly what's visible in viewport
@@ -38,9 +35,11 @@ const CLEANUP_MARGIN = 2048;  // Cleanup: 2048px border - unload tiles beyond th
 
 const TileViewer: React.FC = () => {
   const [tileMeta, setTileMeta] = useState<TileMeta | null>(null);
-  const [panState, setPanState] = useState<PanState>({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState<boolean>(false);
-  const [dragStart, setDragStart] = useState<PanState>({ x: 0, y: 0 });
+  const [panX, setPanX] = useState(0);
+  const [panY, setPanY] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStartX, setDragStartX] = useState(0);
+  const [dragStartY, setDragStartY] = useState(0);
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
 
   // Dynamic tile map: key is "r_c", value is Tile
@@ -227,8 +226,9 @@ const TileViewer: React.FC = () => {
         const initialPanX = worldCenterX - viewportCenterX;
         const initialPanY = worldCenterY - viewportCenterY;
         
-        setPanState({ x: initialPanX, y: initialPanY });
-        
+        setPanX(initialPanX);
+        setPanY(initialPanY);
+
         // Load initial tiles
         await updateTiles(meta, initialPanX, initialPanY);
         setIsInitialized(true);
@@ -245,27 +245,31 @@ const TileViewer: React.FC = () => {
     if (!tileMeta || !isInitialized) return;
 
     const debounceTimer = setTimeout(() => {
-      updateTiles(tileMeta, panState.x, panState.y);
+      updateTiles(tileMeta, panX, panY);
     }, 100); // 100ms debounce - balance between responsiveness and performance
 
     return () => clearTimeout(debounceTimer);
-  }, [panState, tileMeta, isInitialized, updateTiles]);
+  }, [panX, panY, tileMeta, isInitialized, updateTiles]);
 
   // Mouse event handlers
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     setIsDragging(true);
-    setDragStart({ x: e.clientX + panState.x, y: e.clientY + panState.y });
-  }, [panState]);
+    setDragStartX(e.clientX + panX);
+    setDragStartY(e.clientY + panY);
+  }, [panX, panY]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (isDragging && tileMeta) {
-      const newPanX = dragStart.x - e.clientX;
-      const newPanY = dragStart.y - e.clientY;
-      
-      const updatePan = () => setPanState({ x: newPanX, y: newPanY });
+      const newPanX = dragStartX - e.clientX;
+      const newPanY = dragStartY - e.clientY;
+
+      const updatePan = () => {
+        setPanX(newPanX);
+        setPanY(newPanY);
+      };
       requestAnimationFrame(updatePan);
     }
-  }, [isDragging, dragStart, tileMeta]);
+  }, [isDragging, dragStartX, dragStartY, tileMeta]);
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
@@ -275,19 +279,23 @@ const TileViewer: React.FC = () => {
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     const touch = e.touches[0];
     setIsDragging(true);
-    setDragStart({ x: touch.clientX + panState.x, y: touch.clientY + panState.y });
-  }, [panState]);
+    setDragStartX(touch.clientX + panX);
+    setDragStartY(touch.clientY + panY);
+  }, [panX, panY]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     if (isDragging && tileMeta) {
       const touch = e.touches[0];
-      const newPanX = dragStart.x - touch.clientX;
-      const newPanY = dragStart.y - touch.clientY;
-      
-      const updatePan = () => setPanState({ x: newPanX, y: newPanY });
+      const newPanX = dragStartX - touch.clientX;
+      const newPanY = dragStartY - touch.clientY;
+
+      const updatePan = () => {
+        setPanX(newPanX);
+        setPanY(newPanY);
+      };
       requestAnimationFrame(updatePan);
     }
-  }, [isDragging, dragStart, tileMeta]);
+  }, [isDragging, dragStartX, dragStartY, tileMeta]);
 
   const handleTouchEnd = useCallback(() => {
     setIsDragging(false);
@@ -327,16 +335,10 @@ const TileViewer: React.FC = () => {
   // This prevents black flicker during the high-res fade-in
   const lowResTiles = tilesArray.filter(t => t.type === 'low');
 
-  console.log(`Rendering ${tilesArray.length} tiles (${highResTiles.length} high-res, ${lowResTiles.length} low-res), pan=(${panState.x.toFixed(0)},${panState.y.toFixed(0)}), trigger=${renderTrigger}`);
+  console.log(`Rendering ${tilesArray.length} tiles (${highResTiles.length} high-res, ${lowResTiles.length} low-res), pan=(${panX.toFixed(0)},${panY.toFixed(0)}), trigger=${renderTrigger}`);
 
   return (
     <div className="tile-viewer-container">
-      <div className="tile-viewer-info">
-        Pan: ({panState.x.toFixed(0)}, {panState.y.toFixed(0)}) |
-        Center: ({tileMeta.centerRow}, {tileMeta.centerCol}) |
-        Tiles: {highResTiles.length} high-res + {lowResTiles.length} low-res
-      </div>
-
       <div
         ref={containerRef}
         className="tile-viewport"
@@ -360,29 +362,19 @@ const TileViewer: React.FC = () => {
         {lowResTiles.map(tile => {
           const worldX = tile.col * tileMeta.tileWidth;
           const worldY = tile.row * tileMeta.tileHeight;
-          const viewportX = worldX - panState.x;
-          const viewportY = worldY - panState.y;
+          const viewportX = worldX - panX;
+          const viewportY = worldY - panY;
 
           return (
-            <img
+            <PreviewTile
               key={`low_${tile.row}_${tile.col}`}
-              src={tile.url}
-              alt={`Preview ${tile.row},${tile.col}`}
-              className="tile-fade-in"
-              style={{
-                position: 'absolute',
-                left: viewportX - 2,
-                top: viewportY - 2,
-                width: tileMeta.tileWidth + 4,
-                height: tileMeta.tileHeight + 4,
-                objectFit: 'cover',
-                imageRendering: 'auto',
-                filter: 'blur(2px)',
-                zIndex: 1,
-                pointerEvents: 'none',
-                display: 'block',
-                transform: 'translateZ(0)'
-              }}
+              row={tile.row}
+              col={tile.col}
+              url={tile.url}
+              viewportX={viewportX}
+              viewportY={viewportY}
+              tileWidth={tileMeta.tileWidth}
+              tileHeight={tileMeta.tileHeight}
             />
           );
         })}
@@ -391,30 +383,19 @@ const TileViewer: React.FC = () => {
         {highResTiles.map(tile => {
           const worldX = tile.col * tileMeta.tileWidth;
           const worldY = tile.row * tileMeta.tileHeight;
-          const viewportX = worldX - panState.x;
-          const viewportY = worldY - panState.y;
+          const viewportX = worldX - panX;
+          const viewportY = worldY - panY;
 
           return (
-            <img
+            <HighResTile
               key={`high_${tile.row}_${tile.col}`}
-              src={tile.url}
-              alt={`Tile ${tile.row},${tile.col}`}
-              className="tile-fade-in"
-              loading="eager"
-              decoding="async"
-              style={{
-                position: 'absolute',
-                left: viewportX - 0.5,
-                top: viewportY - 0.5,
-                width: tileMeta.tileWidth + 1,
-                height: tileMeta.tileHeight + 1,
-                objectFit: 'cover',
-                imageRendering: 'auto',
-                zIndex: 2,
-                pointerEvents: 'none',
-                display: 'block',
-                backgroundColor: 'transparent'
-              }}
+              row={tile.row}
+              col={tile.col}
+              url={tile.url}
+              viewportX={viewportX}
+              viewportY={viewportY}
+              tileWidth={tileMeta.tileWidth}
+              tileHeight={tileMeta.tileHeight}
             />
           );
         })}
