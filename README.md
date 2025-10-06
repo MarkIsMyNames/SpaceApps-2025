@@ -8,48 +8,21 @@ A high-performance image file viewer for displaying large Mars images with dynam
 
 Follow these steps to get your application running locally.
 
-### 1. Clone the Repository
-```bash
-git clone https://github.com/MarkIsMyNames/SpaceApps-2025.git
+### 1. Clone the repo
+```
+git clone https://github.com/MarkIsMyNames/SpaceApps-2025
 cd SpaceApps-2025
 ```
 
-### 2. Python Backend Setup
+### 2. Run setup
+```
+bash setup.sh
+```
 
-1. **Navigate to the Backend Directory**
-    ```bash
-    cd backend
-    ```
-
-2. **Install Required Packages**
-    ```bash
-    pip install Flask flask-cors Pillow watchdog
-    ```
-
-3. **Run the Python Server**
-    ```bash
-    python app.py
-    ```
-    Backend will be running at http://localhost:5000
-
-### 3. React Frontend Setup
-
-1. **Navigate to the Frontend Directory**
-    ```bash
-    cd frontend
-    ```
-
-2. **Install Dependencies**
-    ```bash
-    npm install
-    ```
-
-3. **Start the Development Server**
-    ```bash
-    npm run dev
-    ```
-    Frontend will be running at http://localhost:5173
-
+### 3. Start the Project
+```
+bash start-local.sh
+```
 
 ## Project Dependencies
 

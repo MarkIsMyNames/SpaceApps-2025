@@ -1,44 +1,38 @@
 #!/bin/bash
 # Local development startup script
 
-echo "🚀 Starting Space Apps Tile Viewer locally..."
+# Start backend
+echo "Starting backend..."
+cd backend || { echo "Could not find backend directory"; exit 1; }
+python app.py &
+BACKEND_PID=$!
+cd ..
 
-# Check if Docker is running
-if ! docker info > /dev/null 2>&1; then
-    echo "❌ Docker is not running. Please start Docker first."
-    exit 1
-fi
-
-# Build and start containers
-echo "📦 Building Docker images..."
-docker-compose build
-
-echo "🏃 Starting containers..."
-docker-compose up -d
+# Start frontend
+echo "Installing frontend dependencies and starting frontend..."
+cd frontend || { echo "Could not find frontend directory"; exit 1; }
+npm install
+npm run dev &
+FRONTEND_PID=$!
+cd ..
 
 # Wait for services to be ready
-echo "⏳ Waiting for services to start..."
+echo "Waiting for services to start..."
 sleep 5
 
 # Check health
-echo "🔍 Checking service health..."
+echo "Checking service health..."
 if curl -f http://localhost:5000/api/tiles/meta > /dev/null 2>&1; then
-    echo "✅ Backend is healthy"
+    echo "Backend is healthy"
 else
-    echo "⚠️  Backend might not be ready yet"
+    echo "Backend might not be ready yet"
 fi
 
-if curl -f http://localhost/ > /dev/null 2>&1; then
-    echo "✅ Frontend is healthy"
+if curl -f http://localhost:3000/ > /dev/null 2>&1; then
+    echo "Frontend is healthy"
 else
-    echo "⚠️  Frontend might not be ready yet"
+    echo "Frontend might not be ready yet"
 fi
 
 echo ""
-echo "✨ Application is running!"
-echo "   Frontend: http://localhost"
-echo "   Backend API: http://localhost:5000/api/tiles/meta"
-echo ""
-echo "To view logs: docker-compose logs -f"
-echo "To stop: docker-compose down"
-
+echo "   Application is running!"

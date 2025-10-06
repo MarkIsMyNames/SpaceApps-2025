@@ -1,3 +1,5 @@
 # Prevents data from being pushed to the repo
 images/
 image_previews/
+scripts/mars_viking_z5.jpg
+venv/

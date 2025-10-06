@@ -1,34 +1,51 @@
 #!/bin/bash
-set -e  # Exit if any command fails
+set -e  # Stop if any command fails
 
-# Clone repo
-git clone https://github.com/MarkIsMyNames/SpaceApps-2025/
-cd SpaceApps-2025/backend/
+# Go to backend directory
+cd backend/
 
-# Create directories
+# Create required folders
 mkdir -p images image_previews
 
-# Ensure Python and pip are available
-if ! command -v python &>/dev/null; then
-  echo "Python not found. Please install Python before running this script."
+# Check Python availability
+if ! command -v python &> /dev/null; then
+  echo "Python not found. Please install Python before continuing."
   exit 1
 fi
 
-# Create and activate virtual environment
-python -m venv venv
-source venv/bin/activate
+# --- Virtual environment setup ---
+if [ ! -d "venv" ]; then
+  echo "Creating virtual environment..."
+  python -m venv venv
+fi
+
+# Activate venv (cross-platform)
+if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win"* ]]; then
+  # Windows (Git Bash / MinGW)
+  source venv/Scripts/activate
+else
+  # Linux / macOS
+  source venv/bin/activate
+fi
+# --- End venv setup ---
 
 # Install dependencies
-pip install requests pillow tqdm
+echo "Installing dependencies..."
+python.exe -m pip install --upgrade pip
+pip install requests pillow tqdm Flask flask-cors watchdog
 
-# Generate stitched Mars image
-python wmts_stitch.py \
+cd scripts/
+
+# Download Mars imagery
+echo "Downloading Mars Viking imagery..."
+python generate_image.py \
   --capabilities "https://trek.nasa.gov/tiles/Mars/EQ/Mars_Viking_MDIM21_ClrMosaic_global_232m/1.0.0/WMTSCapabilities.xml" \
   --layer Mars_Viking_MDIM21_ClrMosaic_global_232m \
   --zoom 5 \
   --out mars_viking_z5.jpg
 
 # Run post-processing scripts
-cd scripts/
-python generate_image.py
+echo "Running image generation and splitting..."
 python split_image.py
+
+echo "Setup complete! You can now run ./start-local.sh"
