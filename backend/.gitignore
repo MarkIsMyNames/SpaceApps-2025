@@ -1,0 +1,3 @@
+# Prevents data from being pushed to the repo
+images/
+image_previews/
