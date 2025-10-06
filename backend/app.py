@@ -313,11 +313,11 @@ def start_file_watcher():
     # Watch both directories
     if os.path.exists(IMAGE_DIR):
         observer.schedule(event_handler, IMAGE_DIR, recursive=False)
-        print(f"📁 Watching {IMAGE_DIR} for tile changes...")
+        print(f"Watching {IMAGE_DIR} for tile changes...")
 
     if os.path.exists(PREVIEW_DIR):
         observer.schedule(event_handler, PREVIEW_DIR, recursive=False)
-        print(f"📁 Watching {PREVIEW_DIR} for tile changes...")
+        print(f"Watching {PREVIEW_DIR} for tile changes...")
 
     observer.start()
     return observer
